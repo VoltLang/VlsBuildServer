@@ -83,12 +83,8 @@ private:
 		if (retval != 0) {
 			parseErrors();
 		} else {
-//			diagnostic.clearBatteryRoot(mBatteryRoot);
+			// TODO: send OK! message back to controller so it can clear errors, notify user etc
 		}
-		/* Wait until the diagnostic thread has finished
-		 * processing so the memory remains valid.
-		 */
-//		diagnostic.blockUntilMessageProcessed();
 		mCompleted = true;
 	}
 
@@ -105,19 +101,18 @@ private:
 			if (locationComponents.length < 3) {
 				continue;
 			}
-/*			loc: ir.Location;
-			loc.filename    = fullPath(locationComponents[0]);
-			uri            := getUriFromPath(loc.filename);
-			loc.line        = toUint(locationComponents[1]);
-			loc.column      = toUint(locationComponents[2]);
-			messageSlice   := strip(line[cast(size_t)errorIndex + Error.length .. $]);
-			if (messageSlice.startsWith(": ")) {
-				messageSlice = messageSlice[2 .. $];
+			filename := fullPath(locationComponents[0]);
+			uri      := getUriFromPath(filename);
+			lineNum  := toInt(locationComponents[1]);
+			colNum   := toInt(locationComponents[2]);
+			msg      := strip(line[cast(size_t)errorIndex + Error.length .. $]);
+			if (msg.startsWith(": ")) {
+				msg = msg[2 .. $];
 			}
-			if (messageSlice.endsWith(".")) {
-				messageSlice = messageSlice[0 .. $-1];
+			if (msg.endsWith(".")) {
+				msg = msg[0 .. $-1];
 			}
-			diagnostic.addError(uri, ref loc, messageSlice, mBatteryRoot);*/
+			send(buildDiagnostic(uri, lineNum-1, colNum, DiagnosticLevel.Error, msg));
 		}
 	}
 }
