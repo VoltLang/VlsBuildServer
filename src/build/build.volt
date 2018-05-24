@@ -76,8 +76,10 @@ private:
 	{
 		retval: u32;
 
-		main.gLog.writeln(new "BUILD! ${mBatteryPath} ${mBuildArgs}");
+		main.gLog.writeln(new "BUILD! ${mBatteryPath} ${mBuildArgs}\n");
 		mBuildOutput = getOutput(mBatteryPath, mBuildArgs, ref retval);
+		main.gLog.writeln(mBuildOutput);
+		main.gLog.flush();
 		if (retval != 0) {
 			parseErrors();
 		} else {

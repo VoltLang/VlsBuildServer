@@ -1,7 +1,7 @@
 module main;
 
 import watt = [watt.io, watt.io.streams, watt.io.seed, watt.math.random, watt.process.spawn,
-	watt.text.path, watt.io.file];
+	watt.text.path, watt.io.file, watt.path];
 import json = watt.json;
 import lsp = vls.lsp;
 static import build;
@@ -12,13 +12,14 @@ private global pendingBuild: build.Build;
 
 fn main(args: string[]) i32
 {
-	buildManager = new build.Manager(`D:\F\Code\volt64\VlsController`);
+	buildManager = new build.Manager(watt.getExecDir());
 	openLog();
 	scope (exit) gLog.close();
 
 	fn handle(msg: lsp.LspMessage) bool
 	{
-		gLog.write(msg.content);
+		gLog.writeln(msg.content);
+		gLog.writeln("");
 		gLog.flush();
 		ro := new lsp.RequestObject(msg.content);
 		// check content
