@@ -6,21 +6,15 @@ import json = watt.json;
 import lsp = vls.lsp;
 static import build;
 
-global gLog: watt.OutputFileStream;
 private global buildManager: build.Manager;
 private global pendingBuild: build.Build;
 
 fn main(args: string[]) i32
 {
 	buildManager = new build.Manager(watt.getExecDir());
-	openLog();
-	scope (exit) gLog.close();
 
 	fn handle(msg: lsp.LspMessage) bool
 	{
-		gLog.writeln(msg.content);
-		gLog.writeln("");
-		gLog.flush();
 		ro := new lsp.RequestObject(msg.content);
 		// check content
 		buildProject(ro);
@@ -31,14 +25,6 @@ fn main(args: string[]) i32
 	}
 
 	return 0;
-}
-
-fn openLog()
-{
-	rng: watt.RandomGenerator;
-	rng.seed(watt.getHardwareSeedU32());
-	inputPath := watt.getEnv("USERPROFILE") ~ "/Desktop/vlsInLog." ~ rng.randomString(4) ~ ".txt";
-	gLog = new watt.OutputFileStream(inputPath);
 }
 
 // move
