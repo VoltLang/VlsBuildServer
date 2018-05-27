@@ -27,7 +27,6 @@ fn main(args: string[]) i32
 	return 0;
 }
 
-// move
 fn buildProject(ro: lsp.RequestObject)
 {
 	arguments := lsp.getArrayKey(ro.params, "arguments");
@@ -38,28 +37,9 @@ fn buildProject(ro: lsp.RequestObject)
 		return;
 	}
 	fspath := lsp.getStringKey(arguments[0], "fsPath");
-	btoml := getBatteryToml(fspath);
+	btoml := lsp.getBatteryToml(fspath);
 	if (btoml is null) {
 		return;
 	}
 	pendingBuild = buildManager.spawnBuild(btoml);
-}
-
-// duplicate (move?)
-fn getBatteryToml(path: string) string
-{
-	basePath := path;
-	while (basePath.length > 0) {
-		srcDir := watt.concatenatePath(basePath, "src");
-		if (watt.isDir(srcDir)) {
-			btoml := watt.concatenatePath(basePath, "battery.toml");
-			if (watt.exists(btoml)) {
-				return btoml;
-			} else {
-				return null;
-			}
-		}
-		lsp.parentDirectory(ref basePath);
-	}
-	return null;
 }
