@@ -54,7 +54,8 @@ fn buildProject(ro: lsp.RequestObject)
 	buildPath := watt.dirName(btoml);
 	if (p := buildPath in gPendingBuilds) {
 		if (!p.completed) {
-			return;  // @todo return error notification to controller
+			lsp.send(lsp.buildVlsBuildPendingNotification(buildPath));
+			return;
 		}
 	}
 	gPendingBuilds[buildPath] = gBuildManager.spawnBuild(buildPath);
