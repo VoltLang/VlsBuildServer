@@ -1,7 +1,6 @@
 module main;
 
-import watt = [watt.io, watt.io.streams, watt.io.seed, watt.math.random, watt.process.spawn,
-	watt.text.path, watt.io.file, watt.path];
+import watt = [watt.io, watt.path];
 import json = watt.json;
 import lsp = vls.lsp;
 static import build;
