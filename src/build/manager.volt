@@ -73,12 +73,12 @@ public:
 		}
 	}
 
-	fn spawnBuild(tomlPath: string) Build
+	fn spawnBuild(buildPath: string) Build
 	{
 		if (mBatteryPath is null) {
 			return null;
 		}
-		return new Build(mBatteryPath, tomlPath);
+		return new Build(mBatteryPath, buildPath);
 	}
 
 	fn cleanup()

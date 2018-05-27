@@ -60,12 +60,18 @@ public:
 		return mBuildOutput;
 	}
 
+	//! What is the buildTag associated with this build?
+	@property fn buildTag() string
+	{
+		return mBatteryRoot;
+	}
+
 private:
 	// Set the various internal variables that the build needs.
-	fn setupBuild(batteryPath: string, tomlPath: string)
+	fn setupBuild(batteryPath: string, buildPath: string)
 	{
 		mBatteryPath = batteryPath;
-		mBatteryRoot = dirName(tomlPath);
+		mBatteryRoot = buildPath;
 		mConfigArgs = ["--chdir", mBatteryRoot, "config", "--netboot", "."];
 		mBuildArgs  = ["--chdir", mBatteryRoot, "build"];
 		mCompleted = false;
@@ -109,7 +115,7 @@ private:
 			if (msg.endsWith(".")) {
 				msg = msg[0 .. $-1];
 			}
-			send(buildDiagnostic(uri, lineNum-1, colNum, DiagnosticLevel.Error, msg, mBatteryRoot));
+			send(buildDiagnostic(uri, lineNum-1, colNum, DiagnosticLevel.Error, msg, buildTag));
 		}
 	}
 }

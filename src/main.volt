@@ -5,12 +5,12 @@ import json = watt.json;
 import lsp = vls.lsp;
 static import build;
 
-private global buildManager: build.Manager;
-private global pendingBuild: build.Build;
+private global gBuildManager: build.Manager;
+private global gPendingBuilds: build.Build[string];
 
 fn main(args: string[]) i32
 {
-	buildManager = new build.Manager(watt.getExecDir());
+	gBuildManager = new build.Manager(watt.getExecDir());
 
 	fn handle(msg: lsp.LspMessage) bool
 	{
@@ -51,5 +51,11 @@ fn buildProject(ro: lsp.RequestObject)
 	if (btoml is null) {
 		return;
 	}
-	pendingBuild = buildManager.spawnBuild(btoml);
+	buildPath := watt.dirName(btoml);
+	if (p := buildPath in gPendingBuilds) {
+		if (!p.completed) {
+			return;  // @todo return error notification to controller
+		}
+	}
+	gPendingBuilds[buildPath] = gBuildManager.spawnBuild(buildPath);
 }
