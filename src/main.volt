@@ -30,55 +30,19 @@ fn main(args: string[]) i32
 // move
 fn buildProject(ro: lsp.RequestObject)
 {
-	arguments := getArrayKey(ro.params, "arguments");
+	arguments := lsp.getArrayKey(ro.params, "arguments");
 	if (arguments.length == 0) {
 		return;
 	}
 	if (arguments[0].type() != json.DomType.Object) {
 		return;
 	}
-	fspath := getStringKey(arguments[0], "fsPath");
+	fspath := lsp.getStringKey(arguments[0], "fsPath");
 	btoml := getBatteryToml(fspath);
 	if (btoml is null) {
 		return;
 	}
 	pendingBuild = buildManager.spawnBuild(btoml);
-}
-
-// duplicate
-fn validateKey(root: json.Value, field: string, t: json.DomType, ref val: json.Value) bool
-{
-	if (root.type() != json.DomType.Object ||
-		!root.hasObjectKey(field)) {
-		return false;
-	}
-	val = root.lookupObjectKey(field);
-	if (val.type() != t) {
-		return false;
-	}
-	return true;
-}
-
-// duplicate
-fn getStringKey(root: json.Value, field: string) string
-{
-	val: json.Value;
-	retval := validateKey(root, field, json.DomType.String, ref val);
-	if (!retval) {
-		return null;
-	}
-	return val.str();
-}
-
-// duplicate
-fn getArrayKey(root: json.Value, field: string) json.Value[]
-{
-	val: json.Value;
-	retval := validateKey(root, field, json.DomType.Array, ref val);
-	if (!retval) {
-		return null;
-	}
-	return val.array();
 }
 
 // duplicate (move?)
@@ -95,18 +59,7 @@ fn getBatteryToml(path: string) string
 				return null;
 			}
 		}
-		parentDirectory(ref basePath);
+		lsp.parentDirectory(ref basePath);
 	}
 	return null;
-}
-
-// duplicate
-fn parentDirectory(ref path: string)
-{
-	while (path.length > 0 && path[$-1] != '/' && path[$-1] != '\\') {
-		path = path[0 .. $-1];
-	}
-	if (path.length > 0) {
-		path = path[0 .. $-1];  // Trailing slash.
-	}
 }
