@@ -7,7 +7,7 @@ import watt.conv;
 import watt.path;
 import watt.process.pipe;
 import watt.text.string;
-static import main;
+import watt.text.path;
 
 
 //import ir = volta.ir;
@@ -76,10 +76,7 @@ private:
 	{
 		retval: u32;
 
-		main.gLog.writeln(new "BUILD! ${mBatteryPath} ${mBuildArgs}\n");
 		mBuildOutput = getOutput(mBatteryPath, mBuildArgs, ref retval);
-		main.gLog.writeln(mBuildOutput);
-		main.gLog.flush();
 		if (retval != 0) {
 			parseErrors();
 		} else {
@@ -101,7 +98,7 @@ private:
 			if (locationComponents.length < 3) {
 				continue;
 			}
-			filename := fullPath(locationComponents[0]);
+			filename := fullPath(concatenatePath(mBatteryRoot, locationComponents[0]));
 			uri      := getUriFromPath(filename);
 			lineNum  := toInt(locationComponents[1]);
 			colNum   := toInt(locationComponents[2]);
