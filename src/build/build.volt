@@ -80,7 +80,7 @@ private:
 		if (retval != 0) {
 			parseErrors();
 		} else {
-			// TODO: send OK! message back to controller so it can clear errors, notify user etc
+			send(buildVlsBuildSuccessNotification(mBatteryRoot));
 		}
 		mCompleted = true;
 	}
@@ -109,7 +109,7 @@ private:
 			if (msg.endsWith(".")) {
 				msg = msg[0 .. $-1];
 			}
-			send(buildDiagnostic(uri, lineNum-1, colNum, DiagnosticLevel.Error, msg));
+			send(buildDiagnostic(uri, lineNum-1, colNum, DiagnosticLevel.Error, msg, mBatteryRoot));
 		}
 	}
 }
