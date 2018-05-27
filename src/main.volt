@@ -16,8 +16,7 @@ fn main(args: string[]) i32
 	fn handle(msg: lsp.LspMessage) bool
 	{
 		ro := new lsp.RequestObject(msg.content);
-		// check content
-		buildProject(ro);
+		handleRequest(ro);
 		return true;
 	}
 
@@ -25,6 +24,18 @@ fn main(args: string[]) i32
 	}
 
 	return 0;
+}
+
+fn handleRequest(ro: lsp.RequestObject)
+{
+	if (ro.methodName != "workspace/executeCommand") {
+		return;
+	}
+	command := lsp.getStringKey(ro.params, "command");
+	if (command != "vls.buildProject") {
+		return;
+	}
+	buildProject(ro);
 }
 
 fn buildProject(ro: lsp.RequestObject)
