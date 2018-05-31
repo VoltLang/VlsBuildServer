@@ -4,22 +4,15 @@
  */
 module bs.toolchain;
 
-import io = watt.io;
-import semver = watt.text.semver;
-import file = watt.io.file;
-import text = watt.text.path;
-import path = watt.path;
+import io      = watt.io;
+import semver  = watt.text.semver;
+import file    = watt.io.file;
+import text    = [watt.text.path, watt.text.string];
+import path    = watt.path;
 
-import github = bs.github;
-import net = bs.net;
-
-//! Signify the status of the toolchain.
-alias Status = i32;
-enum : Status
-{
-	Ok,               //!< The toolchain is present.
-	DownloadFailure,  //!< We tried to download the toolchain, but failed.
-}
+import github  = bs.github;
+import net     = bs.net;
+import extract = bs.extract;
 
 /*!
  * Ensure that we have a functioning toolchain.
@@ -27,22 +20,31 @@ enum : Status
  * This will check the VLS extension folder for a toolchain,
  * and if it is not present, download it.
  *
- * @Returns `Ok` if the toolchain is present.
+ * @Returns `true` if the toolchain is present or we could retrieve it.
+ * Or `false` if it isn't present, and we couldn't retrieve it.
  */
-fn prepare() Status
+fn prepare() bool
 {
 	versions := findToolchains();
 	if (versions.length == 0) {
 		tczip: github.ReleaseFile;
 		if (!getToolchainReleaseFile(out tczip)) {
-			return DownloadFailure;
+			return false;
 		}
-		targetpath := text.concatenatePath(ToolchainDir, tczip.filename);
-		if (!net.download(tczip.url, targetpath, tczip.size)) {
-			return DownloadFailure;
+		targetPath := text.concatenatePath(ToolchainDir, tczip.filename);
+		if (!net.download(tczip.url, targetPath, tczip.size)) {
+			return false;
 		}
+		versionString := getVersionFromToolchainArchiveFilename(targetPath);
+		if (versionString is null) {
+			return false;
+		}
+		extractPath := text.concatenatePath(ToolchainDir, versionString);
+		path.mkdirP(extractPath);
+		extract.archive(filename:targetPath, destination:extractPath);
+		file.remove(targetPath);
 	}
-	return Ok;
+	return true;
 }
 
 fn test() i32
@@ -100,6 +102,25 @@ fn findToolchains() Toolchain[]
 	return versions;
 }
 
+fn getVersionFromToolchainArchiveFilename(filename: string) string
+{
+	idx := text.indexOf(filename, "toolchain-");
+	if (idx <= 0) {
+		return null;
+	}
+	filename = filename[cast(size_t)idx+"toolchain-".length .. $];
+	end := getReleaseFileEnd();
+	idx  = text.indexOf(filename, end);
+	if (idx <= 0) {
+		return null;
+	}
+	filename = filename[0 .. cast(size_t)idx-1];
+	if (!semver.Release.isValid(filename)) {
+		return null;
+	}
+	return filename;
+}
+
 //! @Returns `true` if `dir` looks vaguely like a toolchain to us. Not very thorough.
 fn validToolchain(dir: string) bool
 {
@@ -112,8 +133,14 @@ fn validToolchain(dir: string) bool
 	return file.exists(dir);
 }
 
+fn getReleaseFileEnd() string
+{
+	version (Windows) return "x86_64-msvc.zip";
+	else static assert(false, "implement bs.toolchain.getReleaseFileEnd");
+}
+
 fn getToolchainReleaseFile(out releaseFile: github.ReleaseFile) bool
 {
-	version (Windows) return github.getReleaseFile("bhelyer", "Toolchain", "x86_64-msvc.zip", out releaseFile);
+	version (Windows) return github.getReleaseFile("bhelyer", "Toolchain", getReleaseFileEnd(), out releaseFile);
 	else static assert(false, "implement bs.toolchain.getToolchainReleaseFile");
 }
