@@ -3,6 +3,8 @@ module main;
 import watt = [watt.io, watt.path];
 import json = watt.json;
 import lsp = vls.lsp;
+import workerThread =bs.workerThread;
+import toolchain = bs.toolchain;
 static import build;
 
 private global gBuildManager: build.Manager;
@@ -10,6 +12,13 @@ private global gPendingBuilds: build.Build[string];
 
 fn main(args: string[]) i32
 {
+	if (args[1] == "--test") {
+		return toolchain.test();
+	}
+
+	workerThread.start();
+	scope (exit) workerThread.stop();
+
 	gBuildManager = new build.Manager(watt.getExecDir());
 
 	fn handle(msg: lsp.LspMessage) bool
