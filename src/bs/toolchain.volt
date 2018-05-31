@@ -8,6 +8,10 @@ import io = watt.io;
 import semver = watt.text.semver;
 import file = watt.io.file;
 import text = watt.text.path;
+import path = watt.path;
+
+import github = bs.github;
+import net = bs.net;
 
 //! Signify the status of the toolchain.
 alias Status = i32;
@@ -15,13 +19,6 @@ enum : Status
 {
 	Ok,               //!< The toolchain is present.
 	DownloadFailure,  //!< We tried to download the toolchain, but failed.
-}
-
-//! The types of tool this module handles.
-enum Type
-{
-	Battery,
-	Volta,
 }
 
 /*!
@@ -34,98 +31,52 @@ enum Type
  */
 fn prepare() Status
 {
+	versions := findToolchains();
+	if (versions.length == 0) {
+		tczip: github.ReleaseFile;
+		if (!getToolchainReleaseFile(out tczip)) {
+			return DownloadFailure;
+		}
+		targetpath := text.concatenatePath(ToolchainDir, tczip.filename);
+		if (!net.download(tczip.url, targetpath, tczip.size)) {
+			return DownloadFailure;
+		}
+	}
 	return Ok;
-}
-
-/*!
- * Get the latest version of the given tool that is installed.
- *
- * @Returns The path to the executable, or `null` if no installs are present.
- */
-fn get(type: Type) string
-{
-	return null;
 }
 
 fn test() i32
 {
-	versions := findVersions(Type.Battery, BatteryDir, BatteryTarget);
-	versions ~= findVersions(Type.Volta, VoltaDir, VoltaTarget);
-	if (versions.length == 0) {
-		io.writeln("No batteries detected.");
-		return 1;
-	} else {
-		foreach (ver; versions) {
-			io.writeln(ver.toString());
-		}
-	}
+	prepare();   // prepare, prepare, prepare
 	return 0;
 }
 
 private:
 
-//! An individual install of a tool.
-struct ToolInstall
+struct Toolchain
 {
-	type: Type;               //!< The kind of tool this install represents.
-	release: semver.Release;  //!< The version of this install.
-	executablePath: string;   //!< The path to the tool executable.
-
-	fn toString() string
-	{
-		return new "{${type} ${release} ${executablePath}}";
-	}
+	release: semver.Release;
+	path:    string;
 }
 
-/* ToolchainDir layout:
- * [~/.vscode/extensions]  (our CWD)
- * |
- * +--[toolchain]
- *    |
- *    +--[battery]
- *    |  |
- *    |  +--[0.1.16]
- *    |  |  |
- *    |  |  +--battery.exe
- *    |  |
- *    |  +--[0.2.12]
- *    |     |
- *    |     +--battery.exe
- *    +--[volta] (etc)
- */
 enum ToolchainDir    = "toolchain";  // (In the VLS extension folder)
-enum BatteryDir      = "${ToolchainDir}/battery";
-enum BatteryTarget   = "battery";
-enum VoltaDir        = "${ToolchainDir}/volta";
-enum VoltaTarget     = "volta";
 
-//! @Returns All present install versions (if any) for the given tool type.
-fn toolVersions(type: Type) ToolInstall[]
+fn createToolchainDirectory()
 {
-	final switch (type) with (Type) {
-	case Battery: return findVersions(type, BatteryDir, BatteryTarget);
-	case Volta:   return findVersions(type, VoltaDir, VoltaTarget);
+	if (file.isDir(ToolchainDir)) {
+		return;
 	}
+	path.mkdirP(ToolchainDir);
 }
 
 /*!
- * Find all installed versions of a given type in a given path.
- *
- * The `type` field of the `ToolInstall` structures (if any) will
- * be initialised to `type`. The `release` will be the directory
- * name, and `executablePath` will be the full path to that `targetName`.
- * If the platform is Windows, this will look for `${targetName}.exe`.
- *
- * @Returns Every directory directly under `path` that is named a valid semver,
- * and has a file named `targetName` in it.
+ * Find all installed toolchains.
  */
-fn findVersions(type: Type, path: string, targetName: string) ToolInstall[]
+fn findToolchains() Toolchain[]
 {
-	version (Windows) {
-		targetName = new "${targetName}.exe";
-	}
+	path := ToolchainDir;
 
-	versions: ToolInstall[];
+	versions: Toolchain[];
 
 	fn checkDirectory(s: string) file.SearchStatus
 	{
@@ -133,19 +84,36 @@ fn findVersions(type: Type, path: string, targetName: string) ToolInstall[]
 			return file.SearchStatus.Continue;
 		}
 		target := text.concatenatePath(path, s);
-		target  = text.concatenatePath(target, targetName);
-		if (!file.exists(target)) {
+		if (!validToolchain(target)) {
 			return file.SearchStatus.Continue;
 		}
-		ti: ToolInstall;
-		ti.type = type;
-		ti.release = new semver.Release(s);
-		ti.executablePath = target;
-		versions ~= ti;
+		tc: Toolchain;
+		tc.release = new semver.Release(s);
+		tc.path = target;
+		versions ~= tc;
 		return file.SearchStatus.Continue;
 	}
 
+	createToolchainDirectory();
 	file.searchDir(path, "*", checkDirectory);
 
 	return versions;
+}
+
+//! @Returns `true` if `dir` looks vaguely like a toolchain to us. Not very thorough.
+fn validToolchain(dir: string) bool
+{
+	version (Windows) {
+		target := "bin/battery.exe";
+	} else {
+		target := "bin/battery";
+	}
+	dir = text.concatenatePath(dir, target);
+	return file.exists(dir);
+}
+
+fn getToolchainReleaseFile(out releaseFile: github.ReleaseFile) bool
+{
+	version (Windows) return github.getReleaseFile("bhelyer", "Toolchain", "x86_64-msvc.zip", out releaseFile);
+	else static assert(false, "implement bs.toolchain.getToolchainReleaseFile");
 }
