@@ -67,24 +67,21 @@ fn getBinary(name: string) string
 	} else {
 		name = new "bin/${name}";
 	}
-	path := text.concatenatePath(toolchain.path, name);
-	if (!file.exists(path)) {
+	_path := text.concatenatePath(toolchain.path, name);
+	if (!file.exists(_path)) {
 		return null;
 	}
-	return path;
+	return path.fullPath(_path);
 }
 
 fn getWattSource() string
 {
-	toolchain: Toolchain;
-	if (!prepareLatestToolchain(out toolchain)) {
-		return null;
-	}
-	path := text.concatenatePath(toolchain.path, "lib${path.pathSeparator}watt");
-	if (!file.isDir(path)) {
-		return null;
-	}
-	return path;
+	return getSource("lib${path.dirSeparator}watt");
+}
+
+fn getRtSource() string
+{
+	return getSource("lib${path.dirSeparator}rt");
 }
 
 private:
@@ -96,6 +93,19 @@ struct Toolchain
 }
 
 enum ToolchainDir    = "toolchain";  // (In the VLS extension folder)
+
+fn getSource(dirpath: string) string
+{
+	toolchain: Toolchain;
+	if (!prepareLatestToolchain(out toolchain)) {
+		return null;
+	}
+	_path := text.concatenatePath(toolchain.path, dirpath);
+	if (!file.isDir(_path)) {
+		return null;
+	}
+	return path.fullPath(_path);
+}
 
 //! Create the directory to hold toolchains if it doesn't exist.
 fn createToolchainDirectory()
