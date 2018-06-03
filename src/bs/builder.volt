@@ -16,14 +16,16 @@ fn test() i32
 
 fn build(projectRoot: string) bool
 {
-	io.writeln(new "build(${projectRoot})");
-	config(projectRoot);
+	if (!doConfig(projectRoot)) {
+		return false;
+	}
+	doBuild(projectRoot);
 	return true;
 }
 
 private:
 
-fn config(projectRoot: string) bool
+fn doConfig(projectRoot: string) bool
 {
 	batteryPath := toolchain.getBinary("battery");
 	if (batteryPath is null) {
@@ -55,9 +57,27 @@ fn config(projectRoot: string) bool
 	args[6] = wattPath;
 	args[7] = ".";
 
-	io.writeln(new "${batteryPath} ${args[0 .. $]}");
-	output := process.getOutput(batteryPath, args[0 .. $]);
+	io.writeln(new "${batteryPath} ${args[..]}");
+	output := process.getOutput(batteryPath, args[..]);
 	io.writeln(output);
 
+	return true;
+}
+
+fn doBuild(projectRoot: string) bool
+{
+	batteryPath := toolchain.getBinary("battery");
+	if (batteryPath is null) {
+		return false;
+	}
+
+	args: string[3];
+	args[0] = "--chdir";
+	args[1] = projectRoot;
+	args[2] = "build";
+
+	io.writeln(new "${batteryPath} ${args[..]}");
+	output := process.getOutput(batteryPath, args[..]);
+	io.writeln(output);
 	return true;
 }
