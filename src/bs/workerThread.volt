@@ -17,6 +17,7 @@ alias Status = i32;
 enum : Status
 {
 	Ok,    //!< Work will start/has started on the request.
+	Fail,  //!< The work failed.
 	Busy,  //!< Request cannot be accepted, as a previous task is still processing.
 }
 
@@ -51,9 +52,15 @@ fn stop()
  * @Param projectRoot The path to the directory that holds the 'battery.toml' file.
  * @Returns `Ok` if the build work will start, `Busy` otherwise.
  */
-fn build(projectRoot: string) Status
+fn build(projectRoot: string, reportFunction: fn(Status)) Status
 {
-	return Ok;
+	if (gProjectRoot !is null) {
+		return Busy;
+	}
+	gProjectRoot = projectRoot;
+	gReportFunction = reportFunction;
+	changeTask(Task.Build);
+	return gTask == Task.Build ? Ok : Busy;
 }
 
 private:
@@ -62,11 +69,14 @@ private:
 enum Task
 {
 	Sleep,    //!< Wait until asked to do something. Initial state.
+	Build,    //!< Build a project.
 	Shutdown, //!< Stop working.
 }
 
 global gThread: core.vrt_thread*;  //!< Handle for the thread.
 global gTask: Task;           //!< What the thread has been asked to do.
+global gProjectRoot: string;  //!< What the thread has been asked to build.
+global gReportFunction: fn(Status);
 
 /*!
  * Try to change the current task to `newTask`.  
@@ -74,7 +84,9 @@ global gTask: Task;           //!< What the thread has been asked to do.
  */
 fn changeTask(newTask: Task)
 {
-	gTask = newTask;
+	if (gTask == Task.Sleep) {
+		gTask = newTask;
+	}
 }
 
 //! Dispatch to the handler for the current task.
@@ -85,6 +97,12 @@ fn loop()
 		final switch (gTask) with (Task) {
 		case Sleep: core.vrt_sleep(10); break;
 		case Shutdown: shutdown = true; break;
+		case Build:
+			retval := builder.build(gProjectRoot);
+			gReportFunction(retval ? Ok : Fail);
+			gProjectRoot = null;
+			gTask = Task.Sleep;
+			break;
 		}
 	}
 }

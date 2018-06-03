@@ -7,9 +7,6 @@ import workerThread =bs.workerThread;
 import builder = bs.builder;
 static import build;
 
-private global gBuildManager: build.Manager;
-private global gPendingBuilds: build.Build[string];
-
 fn main(args: string[]) i32
 {
 	if (args[1] == "--test") {
@@ -18,8 +15,6 @@ fn main(args: string[]) i32
 
 	workerThread.start();
 	scope (exit) workerThread.stop();
-
-	gBuildManager = new build.Manager(watt.getExecDir());
 
 	fn handle(msg: lsp.LspMessage) bool
 	{
@@ -46,6 +41,21 @@ fn handleRequest(ro: lsp.RequestObject)
 	buildProject(ro);
 }
 
+private global gBuildPending: bool;
+private global gBuildPath: string;
+
+fn buildComplete(status: workerThread.Status)
+{
+	if (status == workerThread.Ok) {
+		lsp.send(lsp.buildVlsBuildSuccessNotification(gBuildPath));
+	} else if (status == workerThread.Fail) {
+		lsp.send(lsp.buildVlsBuildFailureNotification(gBuildPath));
+		// Report errors here? Or get the builder to do it? Probably the latter.
+	}
+	gBuildPath = null;
+	gBuildPending = false;
+}
+
 fn buildProject(ro: lsp.RequestObject)
 {
 	arguments := lsp.getArrayKey(ro.params, "arguments");
@@ -61,11 +71,11 @@ fn buildProject(ro: lsp.RequestObject)
 		return;
 	}
 	buildPath := watt.dirName(btoml);
-	if (p := buildPath in gPendingBuilds) {
-		if (!p.completed) {
-			lsp.send(lsp.buildVlsBuildPendingNotification(buildPath));
-			return;
-		}
+	if (gBuildPending) {
+		lsp.send(lsp.buildVlsBuildPendingNotification(buildPath));
+		return;
 	}
-	gPendingBuilds[buildPath] = gBuildManager.spawnBuild(buildPath);
+	gBuildPath = buildPath;
+	gBuildPending = true;
+	workerThread.build(gBuildPath, buildComplete);
 }

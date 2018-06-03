@@ -37,6 +37,11 @@ fn doConfig(projectRoot: string) bool
 		return false;
 	}
 
+	clangPath := toolchain.getBinary("clang");
+	if (clangPath is null) {
+		return false;
+	}
+
 	voltaPath := toolchain.getBinary("volta");
 	if (voltaPath is null) {
 		return false;
@@ -52,21 +57,21 @@ fn doConfig(projectRoot: string) bool
 		return false;
 	}
 
-	args: string[10];
-	args[0] = "config";
-	args[1] = "--chdir";
-	args[2] = projectRoot;
-	args[3] = "--cmd-volta";
-	args[4] = voltaPath;
-	args[5] = "--cmd-nasm";
-	args[6] = nasmPath;
-	args[7] = rtPath;
-	args[8] = wattPath;
-	args[9] = ".";
+	args: string[12];
+	args[0 ] = "config";
+	args[1 ] = "--chdir";
+	args[2 ] = projectRoot;
+	args[3 ] = "--cmd-volta";
+	args[4 ] = voltaPath;
+	args[5 ] = "--cmd-nasm";
+	args[6 ] = nasmPath;
+	args[7 ] = "--cmd-clang";
+	args[8 ] = clangPath;
+	args[9 ] = rtPath;
+	args[10] = wattPath;
+	args[11] = ".";
 
-	io.writeln(new "${batteryPath} ${args[..]}");
 	output := process.getOutput(batteryPath, args[..]);
-	io.writeln(output);
 
 	return true;
 }
@@ -83,8 +88,7 @@ fn doBuild(projectRoot: string) bool
 	args[1] = projectRoot;
 	args[2] = "build";
 
-	io.writeln(new "${batteryPath} ${args[..]}");
 	output := process.getOutput(batteryPath, args[..]);
-	io.writeln(output);
+
 	return true;
 }
