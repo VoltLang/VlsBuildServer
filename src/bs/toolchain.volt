@@ -47,10 +47,35 @@ fn prepare() bool
 	return true;
 }
 
-fn test() i32
+/*!
+ * Get the path to a binary.
+ *
+ * Example:
+ * ---
+ *     getBinary("battery");  // on windows returns "/path/to/bin/battery.exe" or null.
+ *
+ * @Returns the full path to `name`, or `null`.
+ */
+fn getBinary(name: string) string
 {
-	prepare();   // prepare, prepare, prepare
-	return 0;
+	if (!prepare()) {
+		return null;
+	}
+	toolchains := findToolchains();
+	if (toolchains.length == 0) {
+		return null;
+	}
+	toolchain  := getLatestToolchain(toolchains);
+	version (Windows) {
+		name = new "bin\\${name}.exe";
+	} else {
+		name = new "bin/${name}";
+	}
+	path := text.concatenatePath(toolchain.path, name);
+	if (!file.exists(path)) {
+		return null;
+	}
+	return path;
 }
 
 private:
@@ -69,6 +94,18 @@ fn createToolchainDirectory()
 		return;
 	}
 	path.mkdirP(ToolchainDir);
+}
+
+fn getLatestToolchain(toolchains: Toolchain[]) Toolchain
+{
+	assert(toolchains.length > 0);
+	latestToolchain := toolchains[0];
+	foreach (toolchain; toolchains[1 .. $]) {
+		if (toolchain.release > latestToolchain.release) {
+			latestToolchain = toolchain;
+		}
+	}
+	return latestToolchain;
 }
 
 /*!

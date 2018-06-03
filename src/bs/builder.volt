@@ -4,6 +4,19 @@
  */
 module bs.builder;
 
+import io = watt.io;
+import toolchain = bs.toolchain;
+
+fn test() i32
+{
+	batpath := toolchain.getBinary("battery");
+	io.writeln(batpath);
+	return 0;
+}
+
+fn build(projectRoot: string)
+{
+}
+
 private:
 
-global gBuildPath: string;  //!< The folder of the project we're currently building.
