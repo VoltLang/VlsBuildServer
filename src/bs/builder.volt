@@ -32,6 +32,11 @@ fn doConfig(projectRoot: string) bool
 		return false;
 	}
 
+	nasmPath := toolchain.getBinary("nasm");
+	if (nasmPath is null) {
+		return false;
+	}
+
 	voltaPath := toolchain.getBinary("volta");
 	if (voltaPath is null) {
 		return false;
@@ -47,15 +52,17 @@ fn doConfig(projectRoot: string) bool
 		return false;
 	}
 
-	args: string[8];
+	args: string[10];
 	args[0] = "config";
 	args[1] = "--chdir";
 	args[2] = projectRoot;
 	args[3] = "--cmd-volta";
 	args[4] = voltaPath;
-	args[5] = rtPath;
-	args[6] = wattPath;
-	args[7] = ".";
+	args[5] = "--cmd-nasm";
+	args[6] = nasmPath;
+	args[7] = rtPath;
+	args[8] = wattPath;
+	args[9] = ".";
 
 	io.writeln(new "${batteryPath} ${args[..]}");
 	output := process.getOutput(batteryPath, args[..]);
