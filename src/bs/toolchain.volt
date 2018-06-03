@@ -58,14 +58,10 @@ fn prepare() bool
  */
 fn getBinary(name: string) string
 {
-	if (!prepare()) {
+	toolchain: Toolchain;
+	if (!prepareLatestToolchain(out toolchain)) {
 		return null;
 	}
-	toolchains := findToolchains();
-	if (toolchains.length == 0) {
-		return null;
-	}
-	toolchain  := getLatestToolchain(toolchains);
 	version (Windows) {
 		name = new "bin\\${name}.exe";
 	} else {
@@ -73,6 +69,19 @@ fn getBinary(name: string) string
 	}
 	path := text.concatenatePath(toolchain.path, name);
 	if (!file.exists(path)) {
+		return null;
+	}
+	return path;
+}
+
+fn getWattSource() string
+{
+	toolchain: Toolchain;
+	if (!prepareLatestToolchain(out toolchain)) {
+		return null;
+	}
+	path := text.concatenatePath(toolchain.path, "lib${path.pathSeparator}watt");
+	if (!file.isDir(path)) {
 		return null;
 	}
 	return path;
@@ -88,6 +97,7 @@ struct Toolchain
 
 enum ToolchainDir    = "toolchain";  // (In the VLS extension folder)
 
+//! Create the directory to hold toolchains if it doesn't exist.
 fn createToolchainDirectory()
 {
 	if (file.isDir(ToolchainDir)) {
@@ -96,6 +106,27 @@ fn createToolchainDirectory()
 	path.mkdirP(ToolchainDir);
 }
 
+/*!
+ * Get the latest Toolchain, fill out `toolchain` and return
+ * `true`, or return `false`.
+ */
+fn prepareLatestToolchain(out toolchain: Toolchain) bool
+{
+	if (!prepare()) {
+		return false;
+	}
+	toolchains := findToolchains();
+	if (toolchains.length == 0) {
+		return false;
+	}
+	toolchain = getLatestToolchain(toolchains);
+	return true;
+}
+
+/*!
+ * Given a non-empty list of toolchains, return the one with
+ * the highest version.
+ */
 fn getLatestToolchain(toolchains: Toolchain[]) Toolchain
 {
 	assert(toolchains.length > 0);
@@ -139,6 +170,7 @@ fn findToolchains() Toolchain[]
 	return versions;
 }
 
+//! Get the version string of the toolchain from the archive filename.
 fn getVersionFromToolchainArchiveFilename(filename: string) string
 {
 	idx := text.indexOf(filename, "toolchain-");
@@ -170,12 +202,14 @@ fn validToolchain(dir: string) bool
 	return file.exists(dir);
 }
 
+//! What does a toolchain archive file end in on this platform?
 fn getReleaseFileEnd() string
 {
 	version (Windows) return "x86_64-msvc.zip";
 	else static assert(false, "implement bs.toolchain.getReleaseFileEnd");
 }
 
+//! Get a release file for the toolchain for this platform, or return `false`.
 fn getToolchainReleaseFile(out releaseFile: github.ReleaseFile) bool
 {
 	version (Windows) return github.getReleaseFile("bhelyer", "Toolchain", getReleaseFileEnd(), out releaseFile);
