@@ -14,12 +14,6 @@ import lsp = vls.lsp;
 
 import toolchain = bs.toolchain;
 
-fn test() i32
-{
-	build(`D:\F\Code\volt64\Test`);
-	return 0;
-}
-
 fn build(projectRoot: string) bool
 {
 	if (!doConfig(projectRoot)) {

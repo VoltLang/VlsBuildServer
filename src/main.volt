@@ -8,10 +8,6 @@ import builder = bs.builder;
 
 fn main(args: string[]) i32
 {
-	if (args[1] == "--test") {
-		return builder.test();
-	}
-
 	workerThread.start();
 	scope (exit) workerThread.stop();
 
