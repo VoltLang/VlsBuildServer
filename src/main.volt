@@ -5,7 +5,6 @@ import json = watt.json;
 import lsp = vls.lsp;
 import workerThread =bs.workerThread;
 import builder = bs.builder;
-static import build;
 
 fn main(args: string[]) i32
 {
