@@ -19,8 +19,7 @@ fn build(projectRoot: string) bool
 	if (!doConfig(projectRoot)) {
 		return false;
 	}
-	doBuild(projectRoot);
-	return true;
+	return doBuild(projectRoot);
 }
 
 private:
@@ -71,7 +70,12 @@ fn doConfig(projectRoot: string) bool
 	args[10] = wattPath;
 	args[11] = ".";
 
-	output := process.getOutput(batteryPath, args[..]);
+	retval: u32;
+	output := process.getOutput(batteryPath, args[..], ref retval);
+
+	if (retval != 0) {
+		return false;
+	}
 
 	return true;
 }
@@ -88,7 +92,12 @@ fn doBuild(projectRoot: string) bool
 	args[1] = projectRoot;
 	args[2] = "build";
 
-	output := process.getOutput(batteryPath, args[..]);
+	retval: u32;
+	output := process.getOutput(batteryPath, args[..], ref retval);
+
+	if (retval != 0) {
+		return false;
+	}
 
 	return true;
 }
