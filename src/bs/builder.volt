@@ -6,6 +6,12 @@ module bs.builder;
 
 import process = watt.process.pipe;
 import io = watt.io;
+import text = watt.text.string;
+import path = [watt.path, watt.text.path];
+import conv = watt.conv;
+
+import lsp = vls.lsp;
+
 import toolchain = bs.toolchain;
 
 fn test() i32
@@ -96,8 +102,39 @@ fn doBuild(projectRoot: string) bool
 	output := process.getOutput(batteryPath, args[..], ref retval);
 
 	if (retval != 0) {
+		sendFirstError(projectRoot, output);
 		return false;
 	}
 
 	return true;
+}
+
+//! Send the first volta error that occurs in `output` (if any).
+fn sendFirstError(projectRoot: string, buildOutput: string)
+{
+	lines := text.splitLines(buildOutput);
+	foreach (line; lines) {
+		errorIndex := text.indexOf(line, "error");
+		if (errorIndex < 0) {
+			continue;
+		}
+		locationSlice := text.strip(line[0 .. errorIndex]);
+		locationComponents := text.split(locationSlice, ':');
+		if (locationComponents.length < 3) {
+			continue;
+		}
+		filename := path.fullPath(path.concatenatePath(projectRoot, locationComponents[0]));
+		uri      := lsp.getUriFromPath(filename);
+		lineNum  := conv.toInt(locationComponents[1]);
+		colNum   := conv.toInt(locationComponents[2]);
+		msg      := text.strip(line[cast(size_t)errorIndex + "error".length .. $]);
+		if (text.startsWith(msg, ": ")) {
+			msg = msg[2 .. $];
+		}
+		if (text.endsWith(msg, ".")) {
+			msg = msg[0 .. $-1];
+		}
+		lsp.send(lsp.buildDiagnostic(uri, lineNum-1, colNum, lsp.DiagnosticLevel.Error, msg, projectRoot));
+		return;
+	}
 }
