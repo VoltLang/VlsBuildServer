@@ -18,7 +18,6 @@ enum : Status
 {
 	Ok,    //!< Work will start/has started on the request.
 	Fail,  //!< The work failed.
-	Busy,  //!< Request cannot be accepted, as a previous task is still processing.
 }
 
 /*!
@@ -38,6 +37,7 @@ fn start()
  */
 fn stop()
 {
+	core.vrt_mutex_delete(gRootsMutex);
 	changeTask(Task.Shutdown);
 	if (gTask != Task.Shutdown) {
 		io.error.writeln("Couldn't cleanly shutdown build server worker thread.");
@@ -48,35 +48,43 @@ fn stop()
 }
 
 /*!
- * Attempt to start building the project at `projectRoot`.  
- * @Param projectRoot The path to the directory that holds the 'battery.toml' file.
- * @Returns `Ok` if the build work will start, `Busy` otherwise.
+ * Set a function for the worker thread to report a build completion to.
  */
-fn build(projectRoot: string, reportFunction: fn(Status)) Status
+fn setReportFunction(func: fn(Status, string))
 {
-	if (gProjectRoot !is null) {
-		return Busy;
-	}
-	gProjectRoot = projectRoot;
-	gReportFunction = reportFunction;
-	changeTask(Task.Build);
-	return gTask == Task.Build ? Ok : Busy;
+	gReportFunction = func;
+}
+
+/*!
+ * Add a build to the build queue.
+ */
+fn addBuild(projectRoot: string)
+{
+	core.vrt_mutex_lock(gRootsMutex);
+	scope (exit) core.vrt_mutex_unlock(gRootsMutex);
+	gProjectRoots ~= projectRoot;
 }
 
 private:
+
+global this()
+{
+	gRootsMutex = core.vrt_mutex_new();
+}
 
 //! The states this thread can be in.
 enum Task
 {
 	Sleep,    //!< Wait until asked to do something. Initial state.
-	Build,    //!< Build a project.
+	Build,    //!< There are one or more builds to be processed.
 	Shutdown, //!< Stop working.
 }
 
-global gThread: core.vrt_thread*;  //!< Handle for the thread.
-global gTask: Task;           //!< What the thread has been asked to do.
-global gProjectRoot: string;  //!< What the thread has been asked to build.
-global gReportFunction: fn(Status);
+global gThread: core.vrt_thread*;            //!< Handle for the thread.
+global gTask: Task;                          //!< What the thread has been asked to do.
+global gProjectRoots: string[];              //!< What the thread has been asked to build.
+global gRootsMutex: core.vrt_mutex*;         //!< Lock for write access to gProjectRoots.
+global gReportFunction: fn(Status, string);  //!< Build status, project root.
 
 /*!
  * Try to change the current task to `newTask`.  
@@ -95,13 +103,27 @@ fn loop()
 	shutdown := false;
 	while (!shutdown) {
 		final switch (gTask) with (Task) {
-		case Sleep: core.vrt_sleep(10); break;
+		case Sleep:
+			core.vrt_sleep(10);
+			// Reading should be fine without the lock.
+			if (gProjectRoots.length > 0) {
+				gTask = Build;
+				continue;
+			}
+			break;
 		case Shutdown: shutdown = true; break;
 		case Build:
-			retval := builder.build(gProjectRoot);
-			gReportFunction(retval ? Ok : Fail);
-			gProjectRoot = null;
-			gTask = Task.Sleep;
+			core.vrt_mutex_lock(gRootsMutex);
+			assert(gProjectRoots.length > 0);
+			root := gProjectRoots[0];
+			gProjectRoots = gProjectRoots[1 .. $];
+			core.vrt_mutex_unlock(gRootsMutex);
+
+			retval := builder.build(root);
+			gReportFunction(retval ? Ok : Fail, root);
+			if (gProjectRoots.length == 0) {
+				gTask = Task.Sleep;
+			}
 			break;
 		}
 	}

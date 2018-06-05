@@ -10,6 +10,7 @@ fn main(args: string[]) i32
 {
 	workerThread.start();
 	scope (exit) workerThread.stop();
+	workerThread.setReportFunction(buildComplete);
 
 	fn handle(msg: lsp.LspMessage) bool
 	{
@@ -30,25 +31,26 @@ fn handleRequest(ro: lsp.RequestObject)
 		return;
 	}
 	command := lsp.getStringKey(ro.params, "command");
-	if (command != "vls.buildProject") {
-		return;
+	switch (command) {
+	case "vls.buildProject":
+		buildProject(ro);
+		break;
+	case "vls.buildAllProjects":
+		buildAllProjects(ro);
+		break;
+	default:
+		watt.error.writeln(new "VlsBuildServer: Unknown Command '${command}'");
+		break;
 	}
-	buildProject(ro);
 }
 
-private global gBuildPending: bool;
-private global gBuildPath: string;
-
-fn buildComplete(status: workerThread.Status)
+fn buildComplete(status: workerThread.Status, buildPath: string)
 {
 	if (status == workerThread.Ok) {
-		lsp.send(lsp.buildVlsBuildSuccessNotification(gBuildPath));
+		lsp.send(lsp.buildVlsBuildSuccessNotification(buildPath));
 	} else if (status == workerThread.Fail) {
-		lsp.send(lsp.buildVlsBuildFailureNotification(gBuildPath));
-		// Report errors here? Or get the builder to do it? Probably the latter.
+		lsp.send(lsp.buildVlsBuildFailureNotification(buildPath));
 	}
-	gBuildPath = null;
-	gBuildPending = false;
 }
 
 fn buildProject(ro: lsp.RequestObject)
@@ -66,11 +68,13 @@ fn buildProject(ro: lsp.RequestObject)
 		return;
 	}
 	buildPath := watt.dirName(btoml);
-	if (gBuildPending) {
-		lsp.send(lsp.buildVlsBuildPendingNotification(buildPath));
-		return;
+	workerThread.addBuild(buildPath);
+}
+
+fn buildAllProjects(ro: lsp.RequestObject)
+{
+	arr := lsp.getArrayKey(ro.params, "workspaceUris");
+	foreach (el; arr) {
+		workerThread.addBuild(lsp.getPathFromUri(el.str()));
 	}
-	gBuildPath = buildPath;
-	gBuildPending = true;
-	workerThread.build(gBuildPath, buildComplete);
 }
