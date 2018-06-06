@@ -92,7 +92,7 @@ struct Toolchain
 	path:    string;
 }
 
-enum ToolchainDir    = "toolchain";  // (In the VLS extension folder)
+enum ToolchainDir    = ".toolchain";  // (In the VLS extension folder)
 
 fn getSource(dirpath: string) string
 {
