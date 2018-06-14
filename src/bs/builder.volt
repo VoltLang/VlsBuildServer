@@ -6,7 +6,8 @@ module bs.builder;
 
 import process = watt.process.pipe;
 import io = watt.io;
-import text = watt.text.string;
+import text = [watt.text.ascii, watt.text.string];
+import file = watt.io.file;
 import path = [watt.path, watt.text.path];
 import conv = watt.conv;
 
@@ -16,13 +17,21 @@ import toolchain = bs.toolchain;
 
 fn build(projectRoot: string) bool
 {
-	if (!doConfig(projectRoot)) {
-		return false;
+	if (!alreadyConfigured(projectRoot)) {
+		if (!doConfig(projectRoot)) {
+			return false;
+		}
 	}
 	return doBuild(projectRoot);
 }
 
 private:
+
+fn alreadyConfigured(projectRoot: string) bool
+{
+	p := path.concatenatePath(projectRoot, ".battery/config.txt");
+	return file.exists(p);
+}
 
 fn doConfig(projectRoot: string) bool
 {
@@ -103,6 +112,42 @@ fn doBuild(projectRoot: string) bool
 	return true;
 }
 
+fn splitLocation(str: string, ref filename: string, ref line: i32, ref column: i32) bool
+{
+	if (str.length <= 1) {
+		return false;
+	}
+	if (str[$-1] == ':') {
+		str = str[0 .. $-1];
+	}
+	i := str.length;
+	fileIndex, lineIndex, columnIndex: ptrdiff_t;
+	fileIndex = lineIndex = columnIndex = -1;
+	while (i > 0) {
+		c := str[--i];
+		if (columnIndex == -1) {
+			if (c == ':') {
+				columnIndex = cast(ptrdiff_t)(i);
+				column = conv.toInt(text.strip(str[i+1 .. $]));
+			} else if (!text.isDigit(c)) {
+				return false;
+			}
+		} else if (lineIndex == -1) {
+			if (c == ':') {
+				lineIndex = cast(ptrdiff_t)(i);
+				line = conv.toInt(text.strip(str[i+1 .. columnIndex]));
+			} else if (!text.isDigit(c)) {
+				return false;
+			}
+		}
+	}
+	if (columnIndex != -1 && lineIndex != -1) {
+		filename = path.fullPath(text.strip(str[0 .. lineIndex]));
+		return true;
+	}
+	return false;
+}
+
 //! Send the first volta error that occurs in `output` (if any).
 fn sendFirstError(projectRoot: string, buildOutput: string)
 {
@@ -113,14 +158,12 @@ fn sendFirstError(projectRoot: string, buildOutput: string)
 			continue;
 		}
 		locationSlice := text.strip(line[0 .. errorIndex]);
-		locationComponents := text.split(locationSlice, ':');
-		if (locationComponents.length < 3) {
+		filename: string;
+		lineNum, colNum: i32;
+		if (!splitLocation(locationSlice, ref filename, ref lineNum, ref colNum)) {
 			continue;
 		}
-		filename := path.fullPath(path.concatenatePath(projectRoot, locationComponents[0]));
 		uri      := lsp.getUriFromPath(filename);
-		lineNum  := conv.toInt(locationComponents[1]);
-		colNum   := conv.toInt(locationComponents[2]);
 		msg      := text.strip(line[cast(size_t)errorIndex + "error".length .. $]);
 		if (text.startsWith(msg, ": ")) {
 			msg = msg[2 .. $];
