@@ -4,9 +4,10 @@
  */
 module bs.builder;
 
+import win32 = core.c.windows;
 import process = watt.process.pipe;
 import io = watt.io;
-import text = [watt.text.ascii, watt.text.string];
+import text = [watt.text.ascii, watt.text.string, watt.text.utf];
 import file = watt.io.file;
 import path = [watt.path, watt.text.path];
 import conv = watt.conv;
@@ -142,7 +143,7 @@ fn splitLocation(str: string, ref filename: string, ref line: i32, ref column: i
 		}
 	}
 	if (columnIndex != -1 && lineIndex != -1) {
-		filename = path.fullPath(text.strip(str[0 .. lineIndex]));
+		filename = text.strip(str[0 .. lineIndex]);
 		return true;
 	}
 	return false;
@@ -163,6 +164,9 @@ fn sendFirstError(projectRoot: string, buildOutput: string)
 		if (!splitLocation(locationSlice, ref filename, ref lineNum, ref colNum)) {
 			continue;
 		}
+		if (!isAbsolutePath(filename)) {
+			filename = path.concatenatePath(projectRoot, filename);
+		}
 		uri      := lsp.getUriFromPath(filename);
 		msg      := text.strip(line[cast(size_t)errorIndex + "error".length .. $]);
 		if (text.startsWith(msg, ": ")) {
@@ -173,5 +177,16 @@ fn sendFirstError(projectRoot: string, buildOutput: string)
 		}
 		lsp.send(lsp.buildDiagnostic(uri, lineNum-1, colNum, lsp.DiagnosticLevel.Error, msg, projectRoot));
 		return;
+	}
+}
+
+fn isAbsolutePath(thePath: string) bool
+{
+	version (!Windows) {
+		return thePath.length > 0 && thePath[0] == '/';
+	} else {
+		widePath := text.convertUtf8ToUtf16(thePath);
+		wideStr  := conv.toStringz(widePath);
+		return win32.PathIsRelativeW(wideStr) == win32.FALSE;
 	}
 }

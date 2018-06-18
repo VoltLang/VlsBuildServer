@@ -1,3 +1,5 @@
 name = "VlsBuildServer"
 output = "VlsBuildServer"
 dependencies = ["watt", "watt.http", "watt.json", "amp.archive", "volta.vls.lsp"]
+[platform.msvc]
+libraries = ["Shlwapi.lib"]
