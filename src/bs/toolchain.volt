@@ -31,8 +31,6 @@ struct Toolchain
  */
 fn prepare() bool
 {
-	return false;
-	/*
 	versions := findToolchains();
 	if (versions.length == 0) {
 		tczip: github.ReleaseFile;
@@ -52,7 +50,7 @@ fn prepare() bool
 		extract.archive(filename:targetPath, destination:extractPath);
 		file.remove(targetPath);
 	}
-	return true;*/
+	return true;
 }
 
 /*!
