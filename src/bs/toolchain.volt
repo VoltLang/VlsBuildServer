@@ -14,6 +14,12 @@ import github  = bs.github;
 import net     = bs.net;
 import extract = bs.extract;
 
+struct Toolchain
+{
+	release: semver.Release;
+	path:    string;
+}
+
 /*!
  * Ensure that we have a functioning toolchain.
  *
@@ -59,7 +65,7 @@ fn prepare() bool
 fn getBinary(name: string) string
 {
 	toolchain: Toolchain;
-	if (!prepareLatestToolchain(out toolchain)) {
+	if (!prepareLatest(out toolchain)) {
 		return null;
 	}
 	version (Windows) {
@@ -84,20 +90,31 @@ fn getRtSource() string
 	return getSource("lib${path.dirSeparator}rt");
 }
 
-private:
-
-struct Toolchain
+/*!
+ * Get the latest Toolchain, fill out `toolchain` and return
+ * `true`, or return `false`.
+ */
+fn prepareLatest(out toolchain: Toolchain) bool
 {
-	release: semver.Release;
-	path:    string;
+	if (!prepare()) {
+		return false;
+	}
+	toolchains := findToolchains();
+	if (toolchains.length == 0) {
+		return false;
+	}
+	toolchain = getLatestToolchain(toolchains);
+	return true;
 }
+
+private:
 
 enum ToolchainDir    = ".toolchain";  // (In the VLS extension folder)
 
 fn getSource(dirpath: string) string
 {
 	toolchain: Toolchain;
-	if (!prepareLatestToolchain(out toolchain)) {
+	if (!prepareLatest(out toolchain)) {
 		return null;
 	}
 	_path := text.concatenatePath(toolchain.path, dirpath);
@@ -114,23 +131,6 @@ fn createToolchainDirectory()
 		return;
 	}
 	path.mkdirP(ToolchainDir);
-}
-
-/*!
- * Get the latest Toolchain, fill out `toolchain` and return
- * `true`, or return `false`.
- */
-fn prepareLatestToolchain(out toolchain: Toolchain) bool
-{
-	if (!prepare()) {
-		return false;
-	}
-	toolchains := findToolchains();
-	if (toolchains.length == 0) {
-		return false;
-	}
-	toolchain = getLatestToolchain(toolchains);
-	return true;
 }
 
 /*!

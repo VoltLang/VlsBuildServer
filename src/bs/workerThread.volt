@@ -7,8 +7,12 @@ module bs.workerThread;
 
 import core = [core.exception, core.rt.thread];
 import io = watt.io;
+import path = watt.path;
+
+import lsp = vls.lsp;
 
 import builder = bs.builder;
+import toolchain = bs.toolchain;
 
 /*!
  * Informs the caller if a work request was received.
@@ -101,10 +105,15 @@ fn changeTask(newTask: Task)
 fn loop()
 {
 	shutdown := false;
+	toolchainPrepared := false;
 	while (!shutdown) {
 		final switch (gTask) with (Task) {
 		case Sleep:
 			core.vrt_sleep(10);
+			prepareToolchain(ref toolchainPrepared);
+			if (!toolchainPrepared) {
+				continue;
+			}
 			// Reading should be fine without the lock.
 			if (gProjectRoots.length > 0) {
 				gTask = Build;
@@ -126,5 +135,22 @@ fn loop()
 			}
 			break;
 		}
+	}
+}
+
+fn prepareToolchain(ref toolchainPrepared: bool)
+{
+	if (toolchainPrepared) {
+		return;
+	}
+
+	tchain: toolchain.Toolchain;
+	toolchainPrepared = toolchain.prepareLatest(out tchain);
+	if (toolchainPrepared) {
+		uri := lsp.getUriFromPath(path.fullPath(tchain.path));
+		msg := lsp.buildVlsToolchainPresentNotification(uri);
+		lsp.send(msg);
+	} else {
+		// @todo report error?
 	}
 }
