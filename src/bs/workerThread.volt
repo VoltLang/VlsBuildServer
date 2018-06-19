@@ -151,6 +151,7 @@ fn prepareToolchain(ref toolchainPrepared: bool)
 		msg := lsp.buildVlsToolchainPresentNotification(uri);
 		lsp.send(msg);
 	} else {
-		// @todo report error?
+		msg := lsp.buildVlsToolchainRetrievalFailure();
+		lsp.send(msg);
 	}
 }
