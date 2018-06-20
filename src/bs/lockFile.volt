@@ -28,7 +28,7 @@ fn get(path: string) Handle
 		win32.CREATE_NEW,
 		win32.FILE_ATTRIBUTE_NORMAL | win32.FILE_FLAG_DELETE_ON_CLOSE,
 		null);
-	if (cast(win32.DWORD)hFile == cast(win32.DWORD)win32.INVALID_HANDLE_VALUE) {
+	if (cast(size_t)hFile == cast(size_t)win32.INVALID_HANDLE_VALUE) {
 		return null;
 	}
 	err := win32.GetLastError();
