@@ -144,6 +144,9 @@ fn prepareToolchain(ref toolchainPrepared: bool)
 		return;
 	}
 
+	toolchain.getLock();
+	toolchain.releaseLock();
+
 	tchain: toolchain.Toolchain;
 	toolchainPrepared = toolchain.prepareLatest(out tchain);
 	if (toolchainPrepared) {

@@ -5,9 +5,20 @@ import json = watt.json;
 import lsp = vls.lsp;
 import workerThread =bs.workerThread;
 import builder = bs.builder;
+import watt.text.getopt;
+
+import toolchain = bs.toolchain;
+import core = core.rt.thread;
 
 fn main(args: string[]) i32
 {
+	bool takeLock;
+	if (getopt(ref args, "take-lock", ref takeLock)) {
+		toolchain.getLock();
+		core.vrt_sleep(10000);
+		toolchain.releaseLock();
+		return 1;
+	}
 	workerThread.start();
 	scope (exit) workerThread.stop();
 	workerThread.setReportFunction(buildComplete);

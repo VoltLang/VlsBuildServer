@@ -18,6 +18,8 @@ import toolchain = bs.toolchain;
 
 fn build(projectRoot: string) bool
 {
+	toolchain.getLock();
+	scope (exit) toolchain.releaseLock();
 	if (!alreadyConfigured(projectRoot)) {
 		if (!doConfig(projectRoot)) {
 			return false;

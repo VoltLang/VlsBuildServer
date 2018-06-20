@@ -4,6 +4,9 @@
  */
 module bs.toolchain;
 
+import win32   = core.c.windows;
+import core    = core.rt.thread;
+
 import io      = watt.io;
 import semver  = watt.text.semver;
 import file    = watt.io.file;
@@ -13,6 +16,7 @@ import path    = watt.path;
 import github  = bs.github;
 import net     = bs.net;
 import extract = bs.extract;
+import lockFile= bs.lockFile;
 
 struct Toolchain
 {
@@ -107,9 +111,27 @@ fn prepareLatest(out toolchain: Toolchain) bool
 	return true;
 }
 
+fn getLock()
+{
+	gLockHandle = lockFile.get(LockFile);
+	while (gLockHandle is null) {
+		core.vrt_sleep(1000);
+		gLockHandle = lockFile.get(LockFile);
+	}
+}
+
+fn releaseLock()
+{
+	lockFile.release(gLockHandle);
+	gLockHandle = null;
+}
+
 private:
 
 enum ToolchainDir    = ".toolchain";  // (In the VLS extension folder)
+enum LockFile        = "${ToolchainDir}/.bslock";
+
+global gLockHandle: lockFile.Handle;
 
 fn getSource(dirpath: string) string
 {
