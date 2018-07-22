@@ -5,7 +5,7 @@
  * This is useful for ensuring multiple instances of the same bs don't
  * trash the toolchain folder with simultaneous access.
  */
-module bs.lockFile;
+module bs.lockFile.lockFileWindows;
 version (Windows):
 
 import win32 = core.c.windows;
